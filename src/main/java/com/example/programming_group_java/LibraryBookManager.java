@@ -38,10 +38,23 @@ public class LibraryBookManager extends Application {
     private Button btnDelete = new Button("Delete");
     private Button btnRefresh = new Button("Refresh");
 
+    // Tracks which Book row is currently selected in the table, so
+    // Update/Delete know which BookID to act on. (Needed to support the
+    // "Get selected Book from table" TODOs below.)
+    private Book selectedBook = null;
+
     @Override
     public void start(Stage primaryStage) {
         // Initialize persistent DB Connection
         dbManager = new DatabaseManager();
+
+        // DatabaseManager's constructor swallows SQLException internally, so
+        // check here whether the connection actually succeeded before going on.
+        if (dbManager.connection == null) {
+            showAlert("Database Connection Failed",
+                    "Could not connect to the database. Please verify the MySQL server is running.");
+            return;
+        }
 
         primaryStage.setTitle("Library Book Manager");
 
@@ -67,11 +80,23 @@ public class LibraryBookManager extends Application {
         HBox buttonBox = new HBox(10, btnAdd, btnUpdate, btnDelete, btnRefresh);
 
         // --- 3. TABLE VIEW (UI Lead) ---
-        // TODO UI Lead: Define TableColumns for Title, Author Name, and Year Published
-        // Example:
-        // TableColumn<Book, String> titleCol = new TableColumn<>("Title");
-        // titleCol.setCellValueFactory(cellData -> cellData.getValue().titleProperty());
-        // bookTable.getColumns().addAll(titleCol, ...);
+        TableColumn<Book, String> titleCol = new TableColumn<>("Title");
+        titleCol.setCellValueFactory(cellData -> cellData.getValue().titleProperty());
+
+        TableColumn<Book, String> authorCol = new TableColumn<>("Author Name");
+        authorCol.setCellValueFactory(cellData -> cellData.getValue().authorNameProperty());
+
+        TableColumn<Book, Number> yearCol = new TableColumn<>("Year Published");
+        yearCol.setCellValueFactory(cellData -> cellData.getValue().yearPublishedProperty());
+
+        bookTable.getColumns().addAll(titleCol, authorCol, yearCol);
+
+        // Track the selected row so Update/Delete know which book to act on,
+        // and populate the form fields for easy editing.
+        bookTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
+            selectedBook = newSel;
+            populateFormFromSelection(newSel);
+        });
 
         // --- 4. MAIN LAYOUT ASSEMBLY ---
         VBox mainLayout = new VBox(15);
@@ -100,15 +125,112 @@ public class LibraryBookManager extends Application {
     }
 
     private void handleAddBook() {
-        // TODO Team Lead / UI: Validate inputs, extract values, call dbManager.addBook()
+        String title = titleField.getText();
+        Author selectedAuthor = authorComboBox.getSelectionModel().getSelectedItem();
+        String yearText = yearField.getText();
+
+        if (title == null || title.trim().isEmpty()) {
+            showAlert("Missing Title", "Please enter a book title.");
+            return;
+        }
+        if (selectedAuthor == null) {
+            showAlert("Missing Author", "Please select an author.");
+            return;
+        }
+        if (yearText == null || !yearText.trim().matches("\\d{4}")) {
+            showAlert("Invalid Year", "Please enter a valid 4-digit year (e.g. 2024).");
+            return;
+        }
+
+        int year = Integer.parseInt(yearText.trim());
+        boolean success = dbManager.addBook(title.trim(), selectedAuthor.getAuthorID(), year);
+
+        if (success) {
+            refreshData();
+            clearForm();
+        } else {
+            showAlert("Add Failed", "Could not add the book. Please try again.");
+        }
     }
 
     private void handleUpdateBook() {
-        // TODO Team Lead / UI: Get selected Book from table, update via dbManager
+        if (selectedBook == null) {
+            showAlert("No Selection", "Please select a book to update.");
+            return;
+        }
+
+        String title = titleField.getText();
+        Author selectedAuthor = authorComboBox.getSelectionModel().getSelectedItem();
+        String yearText = yearField.getText();
+
+        if (title == null || title.trim().isEmpty()) {
+            showAlert("Missing Title", "Please enter a book title.");
+            return;
+        }
+        if (selectedAuthor == null) {
+            showAlert("Missing Author", "Please select an author.");
+            return;
+        }
+        if (yearText == null || !yearText.trim().matches("\\d{4}")) {
+            showAlert("Invalid Year", "Please enter a valid 4-digit year (e.g. 2024).");
+            return;
+        }
+
+        int year = Integer.parseInt(yearText.trim());
+        boolean success = dbManager.updateBook(
+                selectedBook.getBookID(), title.trim(), selectedAuthor.getAuthorID(), year);
+
+        if (success) {
+            refreshData();
+            clearForm();
+        } else {
+            showAlert("Update Failed", "Could not update the book. Please try again.");
+        }
     }
 
     private void handleDeleteBook() {
-        // TODO Team Lead / UI: Get selected Book from table, delete via dbManager
+        if (selectedBook == null) {
+            showAlert("No Selection", "Please select a book to delete.");
+            return;
+        }
+
+        boolean success = dbManager.deleteBook(selectedBook.getBookID());
+
+        if (success) {
+            refreshData();
+            clearForm();
+        } else {
+            showAlert("Delete Failed", "Could not delete the book. Please try again.");
+        }
+    }
+
+    // Populates the form fields from a selected table row so the user can
+    // see/edit the current values before clicking Update.
+    private void populateFormFromSelection(Book book) {
+        if (book == null) {
+            clearForm();
+            return;
+        }
+
+        titleField.setText(book.getTitle());
+        yearField.setText(String.valueOf(book.getYearPublished()));
+
+        // Book only stores the author's name (not AuthorID), so match by
+        // name against the ComboBox's currently loaded Author list.
+        for (Author author : authorComboBox.getItems()) {
+            if (author.getName().equals(book.getAuthorName())) {
+                authorComboBox.getSelectionModel().select(author);
+                break;
+            }
+        }
+    }
+
+    private void clearForm() {
+        titleField.clear();
+        yearField.clear();
+        authorComboBox.getSelectionModel().clearSelection();
+        bookTable.getSelectionModel().clearSelection();
+        selectedBook = null;
     }
 
     private void showAlert(String title, String content) {
