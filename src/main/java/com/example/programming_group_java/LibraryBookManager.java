@@ -17,7 +17,7 @@ import java.sql.*;
 
    GROUP MEMBERS & CONTRIBUTIONS:
    - [Team Lead / Architect Name]: Boilerplate structure, JavaFX UI wiring, integration, and error handling.
-   - [Database Lead Name]: DatabaseManager implementation (JDBC connection & SQL CRUD queries).
+   - [Sergio Madrid]: DatabaseManager implementation (JDBC connection & SQL CRUD queries).
    - [Data Models Lead Name]: Book and Author model classes with JavaFX properties.
    - [UI/UX Lead Name]: JavaFX layout design, controls, and TableView configuration.
    ============================================================================= */
@@ -255,64 +255,253 @@ public class LibraryBookManager extends Application {
     // =========================================================================
     // 1. DATABASE MANAGER CLASS (Assigned to: Database Lead)
     // =========================================================================
-    public static class DatabaseManager {
-        private Connection connection;
-
-        // Exact connection parameters required by rubric
-        private static final String URL = "jdbc:mysql://localhost:3306/librarydb";
-        private static final String USER = "scott";
-        private static final String PASSWORD = "tiger";
-
-        public DatabaseManager() {
-            try {
-                // Persistent connection throughout application lifetime
-                this.connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                System.out.println("Database connection established successfully.");
-            } catch (SQLException e) {
-                System.err.println("Database Connection Failed: " + e.getMessage());
-            }
-        }
-
-        public ObservableList<Book> getAllBooks() {
-            ObservableList<Book> books = FXCollections.observableArrayList();
-            // TODO DB Lead: Execute SELECT JOIN query between Books and Authors tables
-            // SELECT Books.BookID, Books.Title, Authors.Name AS AuthorName, Books.YearPublished
-            // FROM Books JOIN Authors ON Books.AuthorID = Authors.AuthorID;
-            return books;
-        }
-
-        public ObservableList<Author> getAllAuthors() {
-            ObservableList<Author> authors = FXCollections.observableArrayList();
-            // TODO DB Lead: Execute SELECT query on Authors table (AuthorID, Name)
-            return authors;
-        }
-
-        public boolean addBook(String title, int authorId, int yearPublished) {
-            // TODO DB Lead: Execute INSERT INTO Books (Title, AuthorID, YearPublished) VALUES (?, ?, ?)
-            return false;
-        }
-
-        public boolean updateBook(int bookId, String title, int authorId, int yearPublished) {
-            // TODO DB Lead: Execute UPDATE Books SET Title = ?, AuthorID = ?, YearPublished = ? WHERE BookID = ?
-            return false;
-        }
-
-        public boolean deleteBook(int bookId) {
-            // TODO DB Lead: Execute DELETE FROM Books WHERE BookID = ?
-            return false;
-        }
-
-        public void closeConnection() {
-            try {
-                if (connection != null && !connection.isClosed()) {
-                    connection.close();
-                    System.out.println("Database connection closed.");
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
+  public static class DatabaseManager {
+  
+      private Connection connection;
+  
+      // Database login information required by the professor
+      private static final String URL =
+              "jdbc:mysql://localhost:3306/librarydb";
+  
+      private static final String USER = "scott";
+      private static final String PASSWORD = "tiger";
+  
+  
+      // Constructor connects to the database
+      public DatabaseManager() {
+  
+          try {
+              connection =
+                      DriverManager.getConnection(URL, USER, PASSWORD);
+  
+              System.out.println("Connected to database.");
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Database connection error: " + e.getMessage());
+          }
+      }
+  
+  
+      // READ: Gets all books and their author names
+      public ObservableList<Book> getAllBooks() {
+  
+          ObservableList<Book> books =
+                  FXCollections.observableArrayList();
+  
+          String sql =
+                  "SELECT Books.BookID, Books.Title, " +
+                  "Authors.Name, Books.YearPublished " +
+                  "FROM Books " +
+                  "JOIN Authors " +
+                  "ON Books.AuthorID = Authors.AuthorID";
+  
+          try {
+              PreparedStatement statement =
+                      connection.prepareStatement(sql);
+  
+              ResultSet results =
+                      statement.executeQuery();
+  
+              // Reads every book returned by MySQL
+              while (results.next()) {
+  
+                  int bookID =
+                          results.getInt("BookID");
+  
+                  String title =
+                          results.getString("Title");
+  
+                  String authorName =
+                          results.getString("Name");
+  
+                  int yearPublished =
+                          results.getInt("YearPublished");
+  
+                  Book book = new Book(
+                          bookID,
+                          title,
+                          authorName,
+                          yearPublished
+                  );
+  
+                  books.add(book);
+              }
+  
+              results.close();
+              statement.close();
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error loading books: " + e.getMessage());
+          }
+  
+          return books;
+      }
+  
+  
+      // READ: Gets all authors for the ComboBox
+      public ObservableList<Author> getAllAuthors() {
+  
+          ObservableList<Author> authors =
+                  FXCollections.observableArrayList();
+  
+          String sql =
+                  "SELECT AuthorID, Name FROM Authors";
+  
+          try {
+              PreparedStatement statement =
+                      connection.prepareStatement(sql);
+  
+              ResultSet results =
+                      statement.executeQuery();
+  
+              // Reads every author returned by MySQL
+              while (results.next()) {
+  
+                  int authorID =
+                          results.getInt("AuthorID");
+  
+                  String name =
+                          results.getString("Name");
+  
+                  Author author =
+                          new Author(authorID, name);
+  
+                  authors.add(author);
+              }
+  
+              results.close();
+              statement.close();
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error loading authors: " + e.getMessage());
+          }
+  
+          return authors;
+      }
+  
+  
+      // CREATE: Adds a new book
+      public boolean addBook(
+              String title,
+              int authorId,
+              int yearPublished) {
+  
+          String sql =
+                  "INSERT INTO Books " +
+                  "(Title, AuthorID, YearPublished) " +
+                  "VALUES (?, ?, ?)";
+  
+          try {
+              PreparedStatement statement =
+                      connection.prepareStatement(sql);
+  
+              statement.setString(1, title);
+              statement.setInt(2, authorId);
+              statement.setInt(3, yearPublished);
+  
+              int rowsChanged =
+                      statement.executeUpdate();
+  
+              statement.close();
+  
+              return rowsChanged > 0;
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error adding book: " + e.getMessage());
+  
+              return false;
+          }
+      }
+  
+  
+      // UPDATE: Changes an existing book
+      public boolean updateBook(
+              int bookId,
+              String title,
+              int authorId,
+              int yearPublished) {
+  
+          String sql =
+                  "UPDATE Books " +
+                  "SET Title = ?, AuthorID = ?, YearPublished = ? " +
+                  "WHERE BookID = ?";
+  
+          try {
+              PreparedStatement statement =
+                      connection.prepareStatement(sql);
+  
+              statement.setString(1, title);
+              statement.setInt(2, authorId);
+              statement.setInt(3, yearPublished);
+              statement.setInt(4, bookId);
+  
+              int rowsChanged =
+                      statement.executeUpdate();
+  
+              statement.close();
+  
+              return rowsChanged > 0;
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error updating book: " + e.getMessage());
+  
+              return false;
+          }
+      }
+  
+  
+      // DELETE: Removes a book
+      public boolean deleteBook(int bookId) {
+  
+          String sql =
+                  "DELETE FROM Books WHERE BookID = ?";
+  
+          try {
+              PreparedStatement statement =
+                      connection.prepareStatement(sql);
+  
+              statement.setInt(1, bookId);
+  
+              int rowsChanged =
+                      statement.executeUpdate();
+  
+              statement.close();
+  
+              return rowsChanged > 0;
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error deleting book: " + e.getMessage());
+  
+              return false;
+          }
+      }
+  
+  
+      // Closes the database connection when the program exits
+      public void closeConnection() {
+  
+          try {
+              if (connection != null &&
+                      !connection.isClosed()) {
+  
+                  connection.close();
+  
+                  System.out.println(
+                          "Database connection closed.");
+              }
+  
+          } catch (SQLException e) {
+              System.out.println(
+                      "Error closing database: " + e.getMessage());
+          }
+      }
+  }  
 
     // =========================================================================
     // 2. BOOK MODEL CLASS (Assigned to: Data Models Lead)
