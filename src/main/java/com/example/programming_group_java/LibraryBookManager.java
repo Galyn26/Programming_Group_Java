@@ -506,16 +506,35 @@ public class LibraryBookManager extends Application {
     // =========================================================================
     // 2. BOOK MODEL CLASS (Assigned to: Data Models Lead)
     // =========================================================================
+
+    //Book class represents a book and its information
     public static class Book {
+
+        //Stores the unique ID of the book using a JavaFx IntegerProperty
         private final IntegerProperty bookID;
+
+        //Stores the title of the book using a javaFX StringProperty
         private final StringProperty title;
+
+        //Stores the name of the book's author using a JavaFx String
         private final StringProperty authorName;
+
+        //Stores the year the book was published using a javaFX IntegerProperty
         private final IntegerProperty yearPublished;
 
+        //Constructor creates a book object with its ID, title, author name, and publication year
         public Book(int bookID, String title, String authorName, int yearPublished) {
+
+            //Initialize the book ID property
             this.bookID = new SimpleIntegerProperty(bookID);
+
+            //Initialize the title property
             this.title = new SimpleStringProperty(title);
+
+            //Initialize the author name property
             this.authorName = new SimpleStringProperty(authorName);
+
+            //Initialize the year published property
             this.yearPublished = new SimpleIntegerProperty(yearPublished);
         }
 
@@ -536,19 +555,38 @@ public class LibraryBookManager extends Application {
     // =========================================================================
     // 3. AUTHOR MODEL CLASS (Assigned to: Data Models Lead)
     // =========================================================================
+
+
+    // Author class represents an author with an ID and a name
     public static class Author {
+
+        //Stores the author's name using a JavaFX IntegerProperty
         private final IntegerProperty authorID;
+
+        //Stores the author's name using a JavaFX StringProperty
         private final StringProperty name;
 
+        //Constructor creates an Author object with an ID and name
         public Author(int authorID, String name) {
+
+            //Initialize the author ID property
             this.authorID = new SimpleIntegerProperty(authorID);
+
+            //Initialize the name property
             this.name = new SimpleStringProperty(name);
         }
 
+        //Returns the author's ID as an integer
         public int getAuthorID() { return authorID.get(); }
+
+        //Returns the JavafX IntegerProperty for the author's ID
         public IntegerProperty authorIDProperty() { return authorID; }
 
+
+        //Returns the author's name as a String
         public String getName() { return name.get(); }
+
+        //Returns the JavaFX StringProperty for the author's name
         public StringProperty nameProperty() { return name; }
 
         // REQUIRED BY RUBRIC: Override toString() so ComboBox displays only the author's name
