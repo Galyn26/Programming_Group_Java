@@ -5,6 +5,7 @@ import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -16,18 +17,26 @@ import java.sql.*;
    PROGRAMMING PROJECT 4: LIBRARY DB
 
    GROUP MEMBERS & CONTRIBUTIONS:
-   - [Team Lead / Architect Name]: Boilerplate structure, JavaFX UI wiring, integration, and error handling.
+   - [Galyn Ridley]: Boilerplate structure, JavaFX UI wiring, integration, custom dark theme, and split-pane layout.
    - [Sergio Madrid]: DatabaseManager implementation (JDBC connection & SQL CRUD queries).
-   - [Data Models Lead Name]: Book and Author model classes with JavaFX properties.
-   - [UI/UX Lead Name]: JavaFX layout design, controls, and TableView configuration.
+   - [Nicole Izquierdo]: Book and Author model classes with JavaFX properties.
+   - [Elio Machin]: JavaFX layout design, controls, and TableView configuration.
    ============================================================================= */
+
+/* LibraryBookManager class runs the application
+and instantiates the database connection,
+UI/UX interface, and contains nested
+SQL and model classes
+
+Initially
+ */
 
 public class LibraryBookManager extends Application {
 
     // Persistent Database Manager instance
     private static DatabaseManager dbManager;
 
-    // UI Controls (Managed by UI/UX Lead)
+    // UI Controls
     private TableView<Book> bookTable = new TableView<>();
     private TextField titleField = new TextField();
     private TextField yearField = new TextField();
@@ -48,38 +57,119 @@ public class LibraryBookManager extends Application {
         // Initialize persistent DB Connection
         dbManager = new DatabaseManager();
 
-        // DatabaseManager's constructor swallows SQLException internally, so
-        // check here whether the connection actually succeeded before going on.
         if (dbManager.connection == null) {
             showAlert("Database Connection Failed",
                     "Could not connect to the database. Please verify the MySQL server is running.");
             return;
         }
 
-        primaryStage.setTitle("Library Book Manager");
+        primaryStage.setTitle("Library Book Manager - Sleek Edition");
 
-        // --- 1. TOP SECTION: INPUT FORM (UI Lead) ---
+        // --- 1. LEFT PANEL: INPUT FORM & BUTTONS ---
         GridPane inputGrid = new GridPane();
         inputGrid.setHgap(10);
-        inputGrid.setVgap(10);
+        inputGrid.setVgap(12);
 
         titleField.setPromptText("Enter Book Title");
         yearField.setPromptText("4-digit Year (e.g. 2024)");
         authorComboBox.setPromptText("Select Author");
+        authorComboBox.setMaxWidth(Double.MAX_VALUE);
 
-        inputGrid.add(new Label("Title:"), 0, 0);
-        inputGrid.add(titleField, 1, 0);
+        // Styling Form Labels
+        Label lblTitle = new Label("Title:");
+        Label lblAuthor = new Label("Author:");
+        Label lblYear = new Label("Year Published:");
 
-        inputGrid.add(new Label("Author:"), 0, 1);
-        inputGrid.add(authorComboBox, 1, 1);
+        String labelStyle = "-fx-text-fill: #E0E0E0; -fx-font-weight: bold;";
+        lblTitle.setStyle(labelStyle);
+        lblAuthor.setStyle(labelStyle);
+        lblYear.setStyle(labelStyle);
 
-        inputGrid.add(new Label("Year Published:"), 0, 2);
-        inputGrid.add(yearField, 1, 2);
+        // Styling Input Fields
+        String fieldStyle = "-fx-background-color: #2A2A2A; -fx-text-fill: white; -fx-prompt-text-fill: #888888; -fx-border-color: #444444; -fx-border-radius: 4; -fx-background-radius: 4;";
+        titleField.setStyle(fieldStyle);
+        yearField.setStyle(fieldStyle);
 
-        // --- 2. BUTTON CONTROLS (UI Lead) ---
-        HBox buttonBox = new HBox(10, btnAdd, btnUpdate, btnDelete, btnRefresh);
+        // ComboBox specific dark style (ensures selected text and popup menu items are light text)
+        authorComboBox.setStyle(
+                "-fx-background-color: #2A2A2A; " +
+                        "-fx-mark-color: #E0E0E0; " + // Arrow icon color
+                        "-fx-border-color: #444444; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-background-radius: 4;"
+        );
 
-        // --- 3. TABLE VIEW (UI Lead) ---
+        // Ensures selected text in ComboBox reads clearly as light grey/white
+        authorComboBox.setCellFactory(lv -> new ListCell<Author>() {
+            @Override
+            protected void updateItem(Author item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-background-color: #2A2A2A; -fx-text-fill: white;");
+                } else {
+                    setText(item.getName());
+                    setStyle("-fx-background-color: #2A2A2A; -fx-text-fill: white;");
+                }
+            }
+        });
+
+        authorComboBox.setButtonCell(new ListCell<Author>() {
+            @Override
+            protected void updateItem(Author item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(authorComboBox.getPromptText());
+                    setStyle("-fx-text-fill: #888888;"); // Prompt text color
+                } else {
+                    setText(item.getName());
+                    setStyle("-fx-text-fill: white;"); // Selected text color
+                }
+            }
+        });
+
+        inputGrid.add(lblTitle, 0, 0);
+        inputGrid.add(titleField, 0, 1);
+
+        inputGrid.add(lblAuthor, 0, 2);
+        inputGrid.add(authorComboBox, 0, 3);
+
+        inputGrid.add(lblYear, 0, 4);
+        inputGrid.add(yearField, 0, 5);
+
+        // --- 2. COLORED BUTTONS ---
+        applyButtonStyles();
+
+        // 2x2 Grid for Buttons on the left side
+        GridPane buttonGrid = new GridPane();
+        buttonGrid.setHgap(10);
+        buttonGrid.setVgap(10);
+
+        btnAdd.setMaxWidth(Double.MAX_VALUE);
+        btnUpdate.setMaxWidth(Double.MAX_VALUE);
+        btnDelete.setMaxWidth(Double.MAX_VALUE);
+        btnRefresh.setMaxWidth(Double.MAX_VALUE);
+
+        buttonGrid.add(btnAdd, 0, 0);
+        buttonGrid.add(btnUpdate, 1, 0);
+        buttonGrid.add(btnDelete, 0, 1);
+        buttonGrid.add(btnRefresh, 1, 1);
+
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(50);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(50);
+        buttonGrid.getColumnConstraints().addAll(col1, col2);
+
+        Label headerLabel = new Label("Book Management");
+        headerLabel.setStyle("-fx-text-fill: #FFFFFF; -fx-font-size: 18px; -fx-font-weight: bold;");
+
+        VBox leftPanel = new VBox(20);
+        leftPanel.setPadding(new Insets(20));
+        leftPanel.setStyle("-fx-background-color: #1E1E1E;");
+        leftPanel.getChildren().addAll(headerLabel, inputGrid, new Separator(), buttonGrid);
+
+        // --- 3. RIGHT PANEL: TABLE VIEW ---
         TableColumn<Book, String> titleCol = new TableColumn<>("Title");
         titleCol.setCellValueFactory(cellData -> cellData.getValue().titleProperty());
 
@@ -89,34 +179,59 @@ public class LibraryBookManager extends Application {
         TableColumn<Book, Number> yearCol = new TableColumn<>("Year Published");
         yearCol.setCellValueFactory(cellData -> cellData.getValue().yearPublishedProperty());
 
-        bookTable.getColumns().addAll(titleCol, authorCol, yearCol);
+        bookTable.getColumns().add(titleCol);
+        bookTable.getColumns().add(authorCol);
+        bookTable.getColumns().add(yearCol);
+        bookTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // Track the selected row so Update/Delete know which book to act on,
-        // and populate the form fields for easy editing.
+        // Dark theme for TableView
+        bookTable.setStyle("-fx-background-color: #121212; -fx-base: #1E1E1E; -fx-control-inner-background: #1E1E1E; -fx-table-cell-border-color: #333333;");
+
         bookTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             selectedBook = newSel;
             populateFormFromSelection(newSel);
         });
 
-        // --- 4. MAIN LAYOUT ASSEMBLY ---
-        VBox mainLayout = new VBox(15);
-        mainLayout.setPadding(new Insets(15));
-        mainLayout.getChildren().addAll(inputGrid, buttonBox, bookTable);
+        VBox rightPanel = new VBox(10);
+        rightPanel.setPadding(new Insets(15));
+        rightPanel.setStyle("-fx-background-color: #121212;");
+        VBox.setVgrow(bookTable, Priority.ALWAYS);
+        rightPanel.getChildren().add(bookTable);
 
-        // --- 5. EVENT HANDLERS (Team Lead / Wiring) ---
+        // --- 4. SPLIT PANE MAIN LAYOUT ---
+        SplitPane splitPane = new SplitPane();
+        splitPane.getItems().addAll(leftPanel, rightPanel);
+        splitPane.setDividerPositions(0.35); // 35% left panel, 65% table panel
+        splitPane.setStyle("-fx-background-color: #121212;");
+
+        // --- 5. EVENT HANDLERS ---
         btnRefresh.setOnAction(e -> refreshData());
         btnAdd.setOnAction(e -> handleAddBook());
         btnUpdate.setOnAction(e -> handleUpdateBook());
         btnDelete.setOnAction(e -> handleDeleteBook());
 
-        // Load initial data on launch
+        // Load initial data
         refreshData();
 
-        primaryStage.setScene(new Scene(mainLayout, 750, 550));
+        Scene scene = new Scene(splitPane, 850, 500);
+        primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    // --- INTEGRATION HELPERS (Team Lead) ---
+    private void applyButtonStyles() {
+        String baseBtnStyle = "-fx-font-weight: bold; -fx-background-radius: 5; -fx-cursor: hand; -fx-padding: 8 15 8 15;";
+
+        // Light Green
+        btnAdd.setStyle(baseBtnStyle + "-fx-background-color: #A8E6CF; -fx-text-fill: #113F2A;");
+        // Light Blue
+        btnUpdate.setStyle(baseBtnStyle + "-fx-background-color: #AED9E0; -fx-text-fill: #1A3B40;");
+        // Light Red
+        btnDelete.setStyle(baseBtnStyle + "-fx-background-color: #FF8B94; -fx-text-fill: #4A121A;");
+        // Light Yellow
+        btnRefresh.setStyle(baseBtnStyle + "-fx-background-color: #FFF5BA; -fx-text-fill: #4A4312;");
+    }
+
+    // --- INTEGRATION HELPERS ---
     private void refreshData() {
         if (dbManager != null) {
             bookTable.setItems(dbManager.getAllBooks());
@@ -124,6 +239,7 @@ public class LibraryBookManager extends Application {
         }
     }
 
+    // error handling method for adding a book
     private void handleAddBook() {
         String title = titleField.getText();
         Author selectedAuthor = authorComboBox.getSelectionModel().getSelectedItem();
@@ -153,6 +269,7 @@ public class LibraryBookManager extends Application {
         }
     }
 
+    // Handles updating book on application
     private void handleUpdateBook() {
         if (selectedBook == null) {
             showAlert("No Selection", "Please select a book to update.");
@@ -188,6 +305,7 @@ public class LibraryBookManager extends Application {
         }
     }
 
+    // Dynamic handling for deleting book from table
     private void handleDeleteBook() {
         if (selectedBook == null) {
             showAlert("No Selection", "Please select a book to delete.");
@@ -204,8 +322,7 @@ public class LibraryBookManager extends Application {
         }
     }
 
-    // Populates the form fields from a selected table row so the user can
-    // see/edit the current values before clicking Update.
+    // Populate input form when you click on corresponding table tuple
     private void populateFormFromSelection(Book book) {
         if (book == null) {
             clearForm();
@@ -215,8 +332,6 @@ public class LibraryBookManager extends Application {
         titleField.setText(book.getTitle());
         yearField.setText(String.valueOf(book.getYearPublished()));
 
-        // Book only stores the author's name (not AuthorID), so match by
-        // name against the ComboBox's currently loaded Author list.
         for (Author author : authorComboBox.getItems()) {
             if (author.getName().equals(book.getAuthorName())) {
                 authorComboBox.getSelectionModel().select(author);
@@ -225,6 +340,7 @@ public class LibraryBookManager extends Application {
         }
     }
 
+    // Resets user interface back to inital blank slate after action is completed
     private void clearForm() {
         titleField.clear();
         yearField.clear();
@@ -233,6 +349,7 @@ public class LibraryBookManager extends Application {
         selectedBook = null;
     }
 
+    // Displays a popup alert window with a custom title and error message
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
@@ -240,6 +357,7 @@ public class LibraryBookManager extends Application {
         alert.showAndWait();
     }
 
+    // Database connection error handling method
     @Override
     public void stop() throws Exception {
         if (dbManager != null) {
@@ -248,263 +366,166 @@ public class LibraryBookManager extends Application {
         super.stop();
     }
 
+    // Boots application
     public static void main(String[] args) {
         launch(args);
     }
 
     // =========================================================================
-    // 1. DATABASE MANAGER CLASS (Assigned to: Database Lead)
+    // 1. DATABASE MANAGER CLASS
     // =========================================================================
-  public static class DatabaseManager {
-  
-      private Connection connection;
-  
-      // Database login information required by the professor
-      private static final String URL =
-              "jdbc:mysql://localhost:3306/librarydb";
-  
-      private static final String USER = "scott";
-      private static final String PASSWORD = "tiger";
-  
-  
-      // Constructor connects to the database
-      public DatabaseManager() {
-  
-          try {
-              connection =
-                      DriverManager.getConnection(URL, USER, PASSWORD);
-  
-              System.out.println("Connected to database.");
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Database connection error: " + e.getMessage());
-          }
-      }
-  
-  
-      // READ: Gets all books and their author names
-      public ObservableList<Book> getAllBooks() {
-  
-          ObservableList<Book> books =
-                  FXCollections.observableArrayList();
-  
-          String sql =
-                  "SELECT Books.BookID, Books.Title, " +
-                  "Authors.Name, Books.YearPublished " +
-                  "FROM Books " +
-                  "JOIN Authors " +
-                  "ON Books.AuthorID = Authors.AuthorID";
-  
-          try {
-              PreparedStatement statement =
-                      connection.prepareStatement(sql);
-  
-              ResultSet results =
-                      statement.executeQuery();
-  
-              // Reads every book returned by MySQL
-              while (results.next()) {
-  
-                  int bookID =
-                          results.getInt("BookID");
-  
-                  String title =
-                          results.getString("Title");
-  
-                  String authorName =
-                          results.getString("Name");
-  
-                  int yearPublished =
-                          results.getInt("YearPublished");
-  
-                  Book book = new Book(
-                          bookID,
-                          title,
-                          authorName,
-                          yearPublished
-                  );
-  
-                  books.add(book);
-              }
-  
-              results.close();
-              statement.close();
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error loading books: " + e.getMessage());
-          }
-  
-          return books;
-      }
-  
-  
-      // READ: Gets all authors for the ComboBox
-      public ObservableList<Author> getAllAuthors() {
-  
-          ObservableList<Author> authors =
-                  FXCollections.observableArrayList();
-  
-          String sql =
-                  "SELECT AuthorID, Name FROM Authors";
-  
-          try {
-              PreparedStatement statement =
-                      connection.prepareStatement(sql);
-  
-              ResultSet results =
-                      statement.executeQuery();
-  
-              // Reads every author returned by MySQL
-              while (results.next()) {
-  
-                  int authorID =
-                          results.getInt("AuthorID");
-  
-                  String name =
-                          results.getString("Name");
-  
-                  Author author =
-                          new Author(authorID, name);
-  
-                  authors.add(author);
-              }
-  
-              results.close();
-              statement.close();
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error loading authors: " + e.getMessage());
-          }
-  
-          return authors;
-      }
-  
-  
-      // CREATE: Adds a new book
-      public boolean addBook(
-              String title,
-              int authorId,
-              int yearPublished) {
-  
-          String sql =
-                  "INSERT INTO Books " +
-                  "(Title, AuthorID, YearPublished) " +
-                  "VALUES (?, ?, ?)";
-  
-          try {
-              PreparedStatement statement =
-                      connection.prepareStatement(sql);
-  
-              statement.setString(1, title);
-              statement.setInt(2, authorId);
-              statement.setInt(3, yearPublished);
-  
-              int rowsChanged =
-                      statement.executeUpdate();
-  
-              statement.close();
-  
-              return rowsChanged > 0;
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error adding book: " + e.getMessage());
-  
-              return false;
-          }
-      }
-  
-  
-      // UPDATE: Changes an existing book
-      public boolean updateBook(
-              int bookId,
-              String title,
-              int authorId,
-              int yearPublished) {
-  
-          String sql =
-                  "UPDATE Books " +
-                  "SET Title = ?, AuthorID = ?, YearPublished = ? " +
-                  "WHERE BookID = ?";
-  
-          try {
-              PreparedStatement statement =
-                      connection.prepareStatement(sql);
-  
-              statement.setString(1, title);
-              statement.setInt(2, authorId);
-              statement.setInt(3, yearPublished);
-              statement.setInt(4, bookId);
-  
-              int rowsChanged =
-                      statement.executeUpdate();
-  
-              statement.close();
-  
-              return rowsChanged > 0;
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error updating book: " + e.getMessage());
-  
-              return false;
-          }
-      }
-  
-  
-      // DELETE: Removes a book
-      public boolean deleteBook(int bookId) {
-  
-          String sql =
-                  "DELETE FROM Books WHERE BookID = ?";
-  
-          try {
-              PreparedStatement statement =
-                      connection.prepareStatement(sql);
-  
-              statement.setInt(1, bookId);
-  
-              int rowsChanged =
-                      statement.executeUpdate();
-  
-              statement.close();
-  
-              return rowsChanged > 0;
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error deleting book: " + e.getMessage());
-  
-              return false;
-          }
-      }
-  
-  
-      // Closes the database connection when the program exits
-      public void closeConnection() {
-  
-          try {
-              if (connection != null &&
-                      !connection.isClosed()) {
-  
-                  connection.close();
-  
-                  System.out.println(
-                          "Database connection closed.");
-              }
-  
-          } catch (SQLException e) {
-              System.out.println(
-                      "Error closing database: " + e.getMessage());
-          }
-      }
-  }  
+
+    /* Runs all the SQL operations
+    for insertion, deletion, updating,
+    and refreshing the DBMS
+     */
+
+    public static class DatabaseManager {
+
+        private Connection connection;
+
+        // MySQL parameters for connected to localhost DBMS
+        private static final String URL = "jdbc:mysql://localhost:3306/librarydb";
+        private static final String USER = "scott";
+        private static final String PASSWORD = "tiger";
+
+        // DBMS connection instance
+        public DatabaseManager() {
+            try {
+                connection = DriverManager.getConnection(URL, USER, PASSWORD);
+                System.out.println("Connected to database.");
+            } catch (SQLException e) {
+                System.out.println("Database connection error: " + e.getMessage());
+            }
+        }
+
+        // Accessor method for loading all books within DBMS
+        public ObservableList<Book> getAllBooks() {
+            ObservableList<Book> books = FXCollections.observableArrayList();
+            String sql = "SELECT Books.BookID, Books.Title, Authors.Name, Books.YearPublished " +
+                    "FROM Books JOIN Authors ON Books.AuthorID = Authors.AuthorID";
+
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet results = statement.executeQuery();
+
+                while (results.next()) {
+                    books.add(new Book(
+                            results.getInt("BookID"),
+                            results.getString("Title"),
+                            results.getString("Name"),
+                            results.getInt("YearPublished")
+                    ));
+                }
+
+                results.close();
+                statement.close();
+            } catch (SQLException e) {
+                System.out.println("Error loading books: " + e.getMessage());
+            }
+
+            return books;
+        }
+
+        // Accessor method for Authors registered within the DBMS
+        public ObservableList<Author> getAllAuthors() {
+            ObservableList<Author> authors = FXCollections.observableArrayList();
+            String sql = "SELECT AuthorID, Name FROM Authors";
+
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet results = statement.executeQuery();
+
+                while (results.next()) {
+                    authors.add(new Author(
+                            results.getInt("AuthorID"),
+                            results.getString("Name")
+                    ));
+                }
+
+                results.close();
+                statement.close();
+            } catch (SQLException e) {
+                System.out.println("Error loading authors: " + e.getMessage());
+            }
+
+            return authors;
+        }
+
+        // Add book method with safety handling
+        public boolean addBook(String title, int authorId, int yearPublished) {
+            String sql = "INSERT INTO Books (Title, AuthorID, YearPublished) VALUES (?, ?, ?)";
+
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setString(1, title);
+                statement.setInt(2, authorId);
+                statement.setInt(3, yearPublished);
+
+                int rowsChanged = statement.executeUpdate();
+                statement.close();
+
+                return rowsChanged > 0;
+            } catch (SQLException e) {
+                System.out.println("Error adding book: " + e.getMessage());
+                return false;
+            }
+        }
+
+        // Update book method with safety handling
+        public boolean updateBook(int bookId, String title, int authorId, int yearPublished) {
+            String sql = "UPDATE Books SET Title = ?, AuthorID = ?, YearPublished = ? WHERE BookID = ?";
+
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setString(1, title);
+                statement.setInt(2, authorId);
+                statement.setInt(3, yearPublished);
+                statement.setInt(4, bookId);
+
+                int rowsChanged = statement.executeUpdate();
+                statement.close();
+
+                return rowsChanged > 0;
+            } catch (SQLException e) {
+                System.out.println("Error updating book: " + e.getMessage());
+                return false;
+            }
+        }
+
+        // Delete book method with safety handling
+        public boolean deleteBook(int bookId) {
+            String sql = "DELETE FROM Books WHERE BookID = ?";
+
+            try {
+                PreparedStatement statement = connection.prepareStatement(sql);
+                statement.setInt(1, bookId);
+
+                int rowsChanged = statement.executeUpdate();
+                statement.close();
+
+                return rowsChanged > 0;
+            } catch (SQLException e) {
+                System.out.println("Error deleting book: " + e.getMessage());
+                return false;
+            }
+        }
+
+        // Safely close connection and catch exceptions for DBMS
+        public void closeConnection() {
+            try {
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
+                    System.out.println("Database connection closed.");
+                }
+            } catch (SQLException e) {
+                System.out.println("Error closing database: " + e.getMessage());
+            }
+        }
+    }
 
     // =========================================================================
-    // 2. BOOK MODEL CLASS (Assigned to: Data Models Lead)
+    // 2. BOOK MODEL CLASS
     // =========================================================================
 
     //Book class represents a book and its information
@@ -538,7 +559,6 @@ public class LibraryBookManager extends Application {
             this.yearPublished = new SimpleIntegerProperty(yearPublished);
         }
 
-        // Getters and Property methods for JavaFX TableView bindings
         public int getBookID() { return bookID.get(); }
         public IntegerProperty bookIDProperty() { return bookID; }
 
@@ -553,7 +573,7 @@ public class LibraryBookManager extends Application {
     }
 
     // =========================================================================
-    // 3. AUTHOR MODEL CLASS (Assigned to: Data Models Lead)
+    // 3. AUTHOR MODEL CLASS
     // =========================================================================
 
 
@@ -589,7 +609,6 @@ public class LibraryBookManager extends Application {
         //Returns the JavaFX StringProperty for the author's name
         public StringProperty nameProperty() { return name; }
 
-        // REQUIRED BY RUBRIC: Override toString() so ComboBox displays only the author's name
         @Override
         public String toString() {
             return getName();
