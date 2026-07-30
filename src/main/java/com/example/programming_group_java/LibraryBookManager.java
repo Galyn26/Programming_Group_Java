@@ -27,8 +27,6 @@ import java.sql.*;
 and instantiates the database connection,
 UI/UX interface, and contains nested
 SQL and model classes
-
-Initially
  */
 
 public class LibraryBookManager extends Application {
@@ -37,15 +35,16 @@ public class LibraryBookManager extends Application {
     private static DatabaseManager dbManager;
 
     // UI Controls
-    private TableView<Book> bookTable = new TableView<>();
-    private TextField titleField = new TextField();
-    private TextField yearField = new TextField();
-    private ComboBox<Author> authorComboBox = new ComboBox<>();
+    private final TableView<Book> bookTable = new TableView<>();
+    private final TextField titleField = new TextField();
+    private final TextField yearField = new TextField();
+    private final ComboBox<Author> authorComboBox = new ComboBox<>();
 
-    private Button btnAdd = new Button("Add");
-    private Button btnUpdate = new Button("Update");
-    private Button btnDelete = new Button("Delete");
-    private Button btnRefresh = new Button("Refresh");
+    private final Button btnAdd = new Button("Add");
+    private final Button btnUpdate = new Button("Update");
+    private final Button btnDelete = new Button("Delete");
+    private final Button btnRefresh = new Button("Refresh");
+    private final Button btnSpecial = new Button("Special Button");
 
     // Tracks which Book row is currently selected in the table, so
     // Update/Delete know which BookID to act on. (Needed to support the
@@ -149,7 +148,10 @@ public class LibraryBookManager extends Application {
         btnUpdate.setMaxWidth(Double.MAX_VALUE);
         btnDelete.setMaxWidth(Double.MAX_VALUE);
         btnRefresh.setMaxWidth(Double.MAX_VALUE);
+        btnSpecial.setMaxWidth(Double.MAX_VALUE);
 
+        // Spans 2 columns on row 2 so it stretches underneath the other 4 buttons
+        buttonGrid.add(btnSpecial, 0, 2, 2, 1);
         buttonGrid.add(btnAdd, 0, 0);
         buttonGrid.add(btnUpdate, 1, 0);
         buttonGrid.add(btnDelete, 0, 1);
@@ -210,6 +212,8 @@ public class LibraryBookManager extends Application {
         btnUpdate.setOnAction(e -> handleUpdateBook());
         btnDelete.setOnAction(e -> handleDeleteBook());
 
+        btnSpecial.setOnAction(e -> getHostServices().showDocument("https://www.youtube.com/watch?v=SPc9RyoRO20"));
+
         // Load initial data
         refreshData();
 
@@ -229,6 +233,8 @@ public class LibraryBookManager extends Application {
         btnDelete.setStyle(baseBtnStyle + "-fx-background-color: #FF8B94; -fx-text-fill: #4A121A;");
         // Light Yellow
         btnRefresh.setStyle(baseBtnStyle + "-fx-background-color: #FFF5BA; -fx-text-fill: #4A4312;");
+        // Gold Style
+        btnSpecial.setStyle(baseBtnStyle + "-fx-background-color: #FFD700; -fx-text-fill: #3E2723;");
     }
 
     // --- INTEGRATION HELPERS ---
